@@ -4,18 +4,20 @@ from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-import openai
+from openai import OpenAI
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 
-# Load OpenAI API Key securely from environment
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
-if not openai.api_key:
+# Load OpenAI API Key
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
     raise ValueError("OPENAI_API_KEY environment variable not set.")
 
-# Set up FastAPI app
+# Create OpenAI client
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Set up FastAPI
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -27,8 +29,8 @@ async def get_home(request: Request):
 @app.post("/chat", response_class=JSONResponse)
 async def chat(user_input: str = Form(...)):
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4",  # or "gpt-3.5-turbo" if you're on the free tier
+        response = client.chat.completions.create(
+            model="gpt-4",  # or "gpt-3.5-turbo"
             messages=[
                 {
                     "role": "system",
@@ -38,9 +40,9 @@ async def chat(user_input: str = Form(...)):
                         "in ONE sentence. Never start with 'Did you know' or sound formal. "
                         "Every response must be witty and feel like a joke wrapped in a fact. "
                         "Don't repeat stats. Tailor the stat to what the user said. Be confident and spicy."
-                    ),
+                    )
                 },
-                {"role": "user", "content": user_input},
+                {"role": "user", "content": user_input}
             ],
             temperature=0.95,
             max_tokens=150,
