@@ -4,20 +4,33 @@ from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from openai import OpenAI
+from openai import AzureOpenAI
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 
-# Load OpenAI API Key
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY environment variable not set.")
+# Get environment variables
+AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
+AZURE_DEPLOYMENT_NAME = os.getenv("AZURE_DEPLOYMENT_NAME")
+AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 
-# Create OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Validate environment variables
+if not all([AZURE_OPENAI_KEY, AZURE_DEPLOYMENT_NAME, AZURE_OPENAI_API_VERSION, AZURE_OPENAI_ENDPOINT]):
+    raise ValueError("Missing one or more required Azure OpenAI environment variables.")
 
-# Set up FastAPI
+# Initialize Azure OpenAI client
+client = AzureOpenAI(
+    api_key=AZURE_OPENAI_KEY,
+    api_version=AZURE_OPENAI_API_VERSION,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+)
+
+# Initialize FastAPI app
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -30,7 +43,7 @@ async def get_home(request: Request):
 async def chat(user_input: str = Form(...)):
     try:
         response = client.chat.completions.create(
-            model="gpt-4",  # or "gpt-3.5-turbo"
+            model=AZURE_DEPLOYMENT_NAME,
             messages=[
                 {
                     "role": "system",
@@ -42,7 +55,7 @@ async def chat(user_input: str = Form(...)):
                         "Don't repeat stats. Tailor the stat to what the user said. Be confident and spicy."
                     )
                 },
-                {"role": "user", "content": user_input}
+                {"role": "user", "content": user_input},
             ],
             temperature=0.95,
             max_tokens=150,
