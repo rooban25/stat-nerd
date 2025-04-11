@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stat Nerd 🤓</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="chat-container">
+    <h1>Stat Nerd 🤓</h1>
+
+    <div class="chat-box" id="chat-box"></div>
+
+    <form id="chat-form">
+      <input type="text" id="user-input" name="user_input" placeholder="Say something..." required autocomplete="off">
+      <button type="submit">Send</button>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('chat-form');
+    const chatBox = document.getElementById('chat-box');
+    const input = document.getElementById('user-input');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const userText = input.value.trim();
+      if (!userText) return;
+
+      // Show user message
+      const userBubble = document.createElement('div');
+      userBubble.className = 'chat-bubble user';
+      userBubble.textContent = `You: ${userText}`;
+      chatBox.prepend(userBubble);
+
+      // Show bot typing indicator
+      const typingBubble = document.createElement('div');
+      typingBubble.className = 'chat-bubble bot';
+      typingBubble.id = 'typing';
+      typingBubble.textContent = 'Stat Nerd 🤓 is thinking...';
+      chatBox.prepend(typingBubble);
+
+      // Clear input
+      input.value = '';
+
+      // Send request to backend
+      const response = await fetch('/chat', {
+        method: 'POST',
+        body: new URLSearchParams({ user_input: userText }),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+
+      const data = await response.json();
+
+      // Remove typing bubble
+      typingBubble.remove();
+
+      // Show bot response
+      const botBubble = document.createElement('div');
+      botBubble.className = 'chat-bubble bot';
+      botBubble.textContent = data.reply;
+      chatBox.prepend(botBubble);
+    });
+  </script>
+</body>
+</html>
