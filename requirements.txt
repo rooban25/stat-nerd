@@ -1,6 +1,5 @@
 fastapi
 uvicorn
-python-dotenv
-openai
 jinja2
-aiofiles
+python-dotenv
+openai>=1.0.0
