@@ -1,28 +1,32 @@
 import os
-from dotenv import load_dotenv
+import logging
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from openai import AzureOpenAI
-import logging
 
-# Load environment variables
-load_dotenv()
+# Setup logging
+logging.basicConfig(level=logging.INFO)
 
+# Fetch secure keys from environment (Render injects them)
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
 AZURE_DEPLOYMENT_NAME = os.getenv("AZURE_DEPLOYMENT_NAME")
 AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 
-logging.basicConfig(level=logging.INFO)
+# Check all required vars are present
+if not all([AZURE_OPENAI_KEY, AZURE_DEPLOYMENT_NAME, AZURE_OPENAI_API_VERSION, AZURE_OPENAI_ENDPOINT]):
+    raise ValueError("Missing one or more required Azure OpenAI environment variables.")
 
+# Initialize Azure OpenAI client
 client = AzureOpenAI(
     api_key=AZURE_OPENAI_KEY,
     api_version=AZURE_OPENAI_API_VERSION,
     azure_endpoint=AZURE_OPENAI_ENDPOINT,
 )
 
+# Set up FastAPI
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
