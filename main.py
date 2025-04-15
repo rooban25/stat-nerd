@@ -1,69 +1,78 @@
 import os
-import logging
+import requests
+import json
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from openai import AzureOpenAI
 from dotenv import load_dotenv
+from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+# Gemini API config
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 
-# Get environment variables
-AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
-AZURE_DEPLOYMENT_NAME = os.getenv("AZURE_DEPLOYMENT_NAME")
-AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
-AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+if not GEMINI_API_KEY:
+    raise ValueError("Missing Gemini API key!")
 
-# Validate environment variables
-if not all([AZURE_OPENAI_KEY, AZURE_DEPLOYMENT_NAME, AZURE_OPENAI_API_VERSION, AZURE_OPENAI_ENDPOINT]):
-    raise ValueError("Missing one or more required Azure OpenAI environment variables.")
-
-# Initialize Azure OpenAI client
-client = AzureOpenAI(
-    api_key=AZURE_OPENAI_KEY,
-    api_version=AZURE_OPENAI_API_VERSION,
-    azure_endpoint=AZURE_OPENAI_ENDPOINT,
-)
-
-# Initialize FastAPI app
+# Setup FastAPI
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# Initialize chat history
+chat_history = []
+
+# Home page
 @app.get("/", response_class=HTMLResponse)
 async def get_home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    # Uncomment the next line to reset chat every time
+    # chat_history.clear()
+    return templates.TemplateResponse("index.html", {"request": request, "chat_history": chat_history})
 
-@app.post("/chat", response_class=JSONResponse)
-async def chat(user_input: str = Form(...)):
+
+from fastapi.responses import JSONResponse
+
+@app.post("/chat")
+async def chat(request: Request):
+    data = await request.json()
+    user_input = data.get("message", "")
+
+    headers = {"Content-Type": "application/json"}
+
+    prompt = (
+        "You are Stat Nerd 🤓, a hilarious and sarcastic stat master. "
+        "Reply to the user's message with a funny, shocking, or fascinating statistic "
+        "in ONE sentence. The stat should be related to one key word from the prompt."
+        "Every response must be witty and feel like a joke wrapped in a fact. "
+        "Don't repeat stats. Tailor the stat to what the user said. Be confident and spicy."
+    )
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": f"{prompt}\n\nUser: {user_input}"}
+                ]
+            }
+        ]
+    }
+
     try:
-        response = client.chat.completions.create(
-            model=AZURE_DEPLOYMENT_NAME,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are Stat Nerd 🤓, a hilarious and sarcastic stat master. "
-                        "Reply to the user's message with a funny, shocking, or fascinating statistic "
-                        "in ONE sentence. Never start with 'Did you know' or sound formal. "
-                        "Every response must be witty and feel like a joke wrapped in a fact. "
-                        "Don't repeat stats. Tailor the stat to what the user said. Be confident and spicy."
-                    )
-                },
-                {"role": "user", "content": user_input},
-            ],
-            temperature=0.95,
-            max_tokens=150,
-        )
-        bot_reply = response.choices[0].message.content.strip()
+        response = requests.post(GEMINI_URL, headers=headers, data=json.dumps(payload))
+        response.raise_for_status()
+        data = response.json()
+        bot_reply = data["candidates"][0]["content"]["parts"][0]["text"]
 
+        chat_history.append(("User", user_input))
+        chat_history.append(("Stat Nerd 🤓", bot_reply))
     except Exception as e:
-        logging.error("OpenAI Error:", exc_info=True)
-        bot_reply = "Oops, my stat brain just choked on a pie chart. Try again. 🥧"
+        bot_reply = "Oops, my stat brain tripped over a pie chart again. Try me later. 🥧"
+        chat_history.append(("User", user_input))
+        chat_history.append(("Stat Nerd 🤓", bot_reply))
 
-    return {"reply": bot_reply}
+    return JSONResponse(content={"reply": bot_reply})
