@@ -1,66 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Stat Nerd 🤓</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stat Nerd</title>
+  <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <div class="chat-container">
-    <h1>Stat Nerd 🤓</h1>
-
-    <div class="chat-box" id="chat-box"></div>
+  <div class="container">
+    <h1>🤓 Stat Nerd</h1>
+    <p class="tagline">A nerd who turns every convo into a stat attack.</p>
+    <div class="chat-history" id="chat-history">
+      <!-- Chat messages will go here -->
+    </div>
 
     <form id="chat-form">
-      <input type="text" id="user-input" name="user_input" placeholder="Say something..." required autocomplete="off">
+      <input type="text" id="user-input" placeholder="Ask me anything..." autocomplete="off" required />
       <button type="submit">Send</button>
     </form>
   </div>
 
   <script>
-    const form = document.getElementById('chat-form');
-    const chatBox = document.getElementById('chat-box');
-    const input = document.getElementById('user-input');
+    const chatForm = document.getElementById('chat-form');
+    const userInput = document.getElementById('user-input');
+    const chatHistory = document.getElementById('chat-history');
 
-    form.addEventListener('submit', async (e) => {
+    chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-
-      const userText = input.value.trim();
-      if (!userText) return;
+      const input = userInput.value.trim();
+      if (!input) return;
 
       // Show user message
-      const userBubble = document.createElement('div');
-      userBubble.className = 'chat-bubble user';
-      userBubble.textContent = `You: ${userText}`;
-      chatBox.prepend(userBubble);
+      chatHistory.innerHTML += `
+        <div class="message user">
+          <div class="avatar">🧍</div>
+          <div class="msg-content">${input}</div>
+        </div>
+      `;
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+      userInput.value = "";
 
-      // Show bot typing indicator
-      const typingBubble = document.createElement('div');
-      typingBubble.className = 'chat-bubble bot';
-      typingBubble.id = 'typing';
-      typingBubble.textContent = 'Stat Nerd 🤓 is thinking...';
-      chatBox.prepend(typingBubble);
-
-      // Clear input
-      input.value = '';
-
-      // Send request to backend
-      const response = await fetch('/chat', {
+      // Send to backend
+      const res = await fetch('/chat', {
         method: 'POST',
-        body: new URLSearchParams({ user_input: userText }),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input })
       });
 
-      const data = await response.json();
-
-      // Remove typing bubble
-      typingBubble.remove();
+      const data = await res.json();
 
       // Show bot response
-      const botBubble = document.createElement('div');
-      botBubble.className = 'chat-bubble bot';
-      botBubble.textContent = data.reply;
-      chatBox.prepend(botBubble);
+      chatHistory.innerHTML += `
+        <div class="message bot">
+          <div class="avatar">🤓</div>
+          <div class="msg-content">${data.reply}</div>
+        </div>
+      `;
+      chatHistory.scrollTop = chatHistory.scrollHeight;
     });
   </script>
 </body>
