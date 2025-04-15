@@ -49,7 +49,7 @@ async def chat(request: Request):
         "Reply to the user's message with a funny, shocking, or fascinating statistic "
         "in ONE sentence. The stat should be related to one key word from the prompt."
         "Every response must be witty and feel like a joke wrapped in a fact. "
-        "Don't repeat stats. Tailor the stat to what the user said. Be confident and spicy."
+        "Don't repeat stats. Tailor the stat to what the user said. Be confident and don't make non understandable jokes."
     )
 
     payload = {
